@@ -3,8 +3,8 @@
 
 library(finalfit)
 library(waiter)
-library(ggforce)
-# cluster
+#library(ggforce) # not used yet
+# For clustering
 library(cluster)
 library(fpc)
 # shiny
@@ -105,10 +105,11 @@ ui <- fluidPage(
   tabsetPanel(
     tabPanel("Data",
              p(""),
-             h3("How to use this app"),
+             
              
              sidebarLayout(
                sidebarPanel(
+                 h3("How to use this app"),
                  p("1. First upload a dataset"),
                  p("Please note that the app currently accepts only .csv and .tsv files"),
                  #br(),
@@ -117,8 +118,29 @@ ui <- fluidPage(
                    " tab and select variables to do the clustering. There, you will
                    also get descriptives of ", em("Internal validation"), "statistics.",
                    a(href = "https://arxiv.org/pdf/1503.02059.pdf", "see p.25 here")),
+
                  p("3. Go to ", em("Evaluate"), " tab and select variables
                    to see their distribution within the clusters, with graphs and tables"),
+                 hr(),
+                 h4("A few words on the app"),
+                 p("The app is using the R packages: ",code("cluster"), "for clustering, the",
+                   code("fpc"), "for internal validation statistics, and of course 
+                   makes heavy usage of the ", code("tidyverse"), "collection of packages
+                   for data wrangling", "The graphs are produced with the ", code("ggplot2"),
+                   "package.", "I also try to improve the UI using the ", code("shinyWidgets"),
+                   "package. (not there yet... :). Lastly, I managed to incorporate some",
+                   a(href = "https://shiny.rstudio.com/articles/modules.html", "shiny modules"), 
+                   "functionality (not much yet, just the download buttons) to manage the code complexity"),
+                 hr(),
+                 p("This app is created by", a(href = "https://www.linkedin.com/in/lefkios",
+                                               "Lefkios Paikousis."), 
+                   br(),
+                 "The code for the app can be found in my", 
+                   a(href="https://github.com/lefkiospaikousis/clusterShinyApp", "Github page"),
+                 br(), "You can also find me on ", a(href = "https://twitter.com/lefkiospaik", 
+                                                "twitter")),
+                 p("As this is a work in progres, please send me your comments 
+                   and suggestions how to improve this app. Thanks for visiting"),
                  width = 3,
                  # br(),
                  # checkboxInput("showFilter", "Filter you dataset?"),
