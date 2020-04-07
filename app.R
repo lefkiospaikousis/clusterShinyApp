@@ -1,7 +1,7 @@
 # Cluster analysis app
 # Lefkios Paikousis
 
-library(finalfit)
+#library(finalfit)
 library(waiter)
 #library(ggforce) # not used yet
 # For clustering
@@ -10,7 +10,7 @@ library(fpc)
 # shiny
 library(shiny)
 library(shinyWidgets)
-library(shinyFeedback)
+#library(shinyFeedback)
 library(shinydashboard)
 library(shinyjs)
 #
@@ -48,6 +48,8 @@ stats_per_clust <- c("average.distance" = "within cluster average distances"
 stats_overall <- c("average.between" = "average distance between clusters"
                    , "average.within" = "average distance within clusters"
                    , "avg.silwidth" = "average silhouette width"
+                   , "sindex" = "adjusted separation index"
+                   # for sindex see the documentation. less sensitive to a single or a few ambiguous points for 
 )
 
 
@@ -125,7 +127,7 @@ ui <- fluidPage(
                  h4("A few words on the app"),
                  p("The app is using the R packages: ",code("cluster"), "for clustering, the",
                    code("fpc"), "for internal validation statistics, and of course 
-                   makes heavy usage of the ", code("tidyverse"), "collection of packages
+                   uses the ", code("tidyverse"), "collection of packages
                    for data wrangling", "The graphs are produced with the ", code("ggplot2"),
                    "package.", "I also try to improve the UI using the ", code("shinyWidgets"),
                    "package. (not there yet... :). Lastly, I managed to incorporate some",
@@ -140,7 +142,7 @@ ui <- fluidPage(
                  br(), "You can also find me on ", a(href = "https://twitter.com/lefkiospaik", 
                                                 "twitter")),
                  p("As this is a work in progres, please send me your comments 
-                   and suggestions how to improve this app. Thanks for visiting"),
+                   and suggestions on how to improve this app. Thanks for visiting"),
                  width = 3,
                  # br(),
                  # checkboxInput("showFilter", "Filter you dataset?"),
@@ -193,7 +195,10 @@ ui <- fluidPage(
                              value = 2, step = 1, ticks = FALSE,
                              min = min(n_clusters), max = max(n_clusters)
                  ),
-                 uiOutput("vars_cluster")
+                 uiOutput("vars_cluster"),
+                 p("Note!: You have used the following variables to create the clusters:"),
+                 textOutput("vars_cluster_length"),
+                 verbatimTextOutput("cluster_variables_tabCl", placeholder = TRUE)
                  
                  , width = 3
                  
@@ -258,7 +263,7 @@ ui <- fluidPage(
                       p("Any variables that are ", code("nominal"), "ie.", em("categorical"),
                         "will be ignored for the plots, but will be considered for the tables"),
                       p("Note!: You have used the following variables to create the clusters:"),
-                      verbatimTextOutput("cluster_variables"),
+                      verbatimTextOutput("cluster_variables_tabEv"),
                       uiOutput("vars_evaluate")
                ),
                column(8,
@@ -1007,7 +1012,11 @@ server <- function(input, output) {
     )
   }, striped = TRUE)
   
-  output$cluster_variables <- renderPrint(vars_for_cluster())
+  # separate outpus for tab Cluster and tab_Evluate
+  output$cluster_variables_tabCl <- renderPrint(vars_for_cluster())
+  output$cluster_variables_tabEv <- renderPrint(vars_for_cluster())
+  
+  output$vars_cluster_length <- renderPrint(length(vars_for_cluster()))
   
   output$hc_plot <- renderPlot({
     
