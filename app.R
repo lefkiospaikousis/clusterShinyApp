@@ -1,20 +1,27 @@
 # Cluster analysis app
 # Lefkios Paikousis
 
-#library(finalfit)
+
+# Libraries ---------------------------------------------------------------
+
 library(waiter)
 #library(ggforce) # not used yet
+
 # For clustering
 library(cluster)
 library(fpc)
+
 # shiny
 library(shiny)
 library(shinyWidgets)
-#library(shinyFeedback)
+
 library(shinydashboard)
 library(shinyjs)
-#
+
 library(tidyverse)
+
+
+# Functions ---------------------------------------------------------------
 
 scale2 <- function(x, na.rm = TRUE) (x - mean(x, na.rm = na.rm)) / sd(x, na.rm)
 
@@ -43,6 +50,7 @@ stats_per_clust <- c("average.distance" = "within cluster average distances"
                      , "separation" = "minimum distances of a point in the cluster to a point of another cluster"
                      , "average.toother" = "average distances of a point in the cluster to the points of other clusters"
                      , "clus.avg.silwidths" = "average silhouette widths"
+                     #,"cluster.size" = "cluster size"
 )
 
 stats_overall <- c("average.between" = "average distance between clusters"
@@ -50,7 +58,9 @@ stats_overall <- c("average.between" = "average distance between clusters"
                    , "avg.silwidth" = "average silhouette width"
                    , "sindex" = "adjusted separation index"
                    # for sindex see the documentation. less sensitive to a single or a few ambiguous points for 
-)
+                   #,"within.cluster.ss" = "a generalisation of the within clusters sum of squares"
+                   ,"ch"
+                   )
 
 
 # Modules -----------------------------------------------------------------
@@ -107,8 +117,6 @@ ui <- fluidPage(
   tabsetPanel(
     tabPanel("Data",
              p(""),
-             
-             
              sidebarLayout(
                sidebarPanel(
                  h3("How to use this app"),
@@ -144,9 +152,6 @@ ui <- fluidPage(
                  p("As this is a work in progres, please send me your comments 
                    and suggestions on how to improve this app. Thanks for visiting"),
                  width = 3,
-                 # br(),
-                 # checkboxInput("showFilter", "Filter you dataset?"),
-                 # uiOutput("dplyrFilter")
                ),
                
                mainPanel(
@@ -166,12 +171,6 @@ ui <- fluidPage(
              hr(),
              sidebarLayout(
                sidebarPanel(
-                 
-                 # shinyWidgets::awesomeRadio("clust_method", "Clustering Method",
-                 #             clust_methods,
-                 #             selected = "k - means"
-                 #             , inline = TRUE
-                 #             ),
                  p(strong("Note:"), "The dissimilrity matrix is always using
                    the ", code("Euclidean"), " distance, except when
                    a categorical variable is selected which automaticaly
@@ -205,18 +204,14 @@ ui <- fluidPage(
                ),
                mainPanel(
                  fluidRow(
-                   # column(3, uiOutput("vars_cluster")
-                   # ),
                    column(7,
                           h4("Internal validation"),
                           #Select the # of clusters and see their size and silhouette statistics per cluster"),
-                          
                           p(strong("-Silhouette Information-")),
                           tableOutput("cluster_info"),
                           hr(),
                           p(strong("-Cluster Stats-")),
                           tableOutput("stats_cluster"),
-                          #shinyWidgets::actionBttn("show_fpcStats", "What?", style = "minimal", size = "sm"),
                           checkboxInput("show_fpcStats", "What are these?"),
                           uiOutput("show_fpcStats"),
                           hr(),
@@ -228,16 +223,14 @@ ui <- fluidPage(
                             status = "success",
                             fill = TRUE
                           ),
-                          #checkboxInput("show_clustSepPlot", "show plot"),
                           uiOutput("show_clustSepPlot"),
                           hr(),
-                          #  plotOutput("plot_clustSeparation"),
                           p(strong("-Correlations between the", code("numeric"),"variables-")),
                           p("This will allow you also to check on outliers"),
                           plotOutput("plot_scatterMatrix")
                           
                    ),
-                   column(5, #, plotOutput("hc_plot", "90%", 1000)
+                   column(5, 
                           conditionalPanel(
                             condition = "input.clust_method == 'Hierarchical'",
                             checkboxInput("show_dendro", "Show the dendrogram"),
@@ -291,7 +284,6 @@ ui <- fluidPage(
                         p("This plot show the average standardised value (z-score) of each variable in each cluster"),
                         p("Its an indication of whether the cluster is on average Higher or lower than
                         the overall average"),
-                        #plotDownloadButton_UI("plot_"),
                         plotOutput("tile_plot", height = 500),
                         
                         collapsible = TRUE, collapsed = TRUE,
@@ -310,7 +302,6 @@ ui <- fluidPage(
                )
              )
              
-             #plotOutput("corr_plot"),
              
     ),
     tabPanel("Download",
@@ -318,9 +309,6 @@ ui <- fluidPage(
              h4("Cluster and its silhouette width"),
              p("Download full table with cluster memebership and silhouette width"),
              DT::dataTableOutput("data_updated"),
-             # radioButtons("down_type", "What type?",
-             #              choices = c("CSV" =".csv", "Excel"= ".xlsx"),inline = TRUE),
-             # downloadButton("down_data", "Download"),
     ),
     tabPanel("INFO",
              hr(),
@@ -488,8 +476,6 @@ server <- function(input, output) {
     
     kmeans(data, input$clustN, nstart = 25)
     
-    #kmeans(data_scaled()[, vars_for_cluster()], input$clustN, nstart = 25)
-    
   })
   # Cluster Membership
   hc_clust_member <- reactive({
@@ -528,10 +514,6 @@ server <- function(input, output) {
     total_summary <- hc_clust_sil() %>%
       summarise_at(vars(sil_width), sil_summary) %>%
       mutate(cluster = "ALL")
-    # summarise(avg_sil = round(mean(sil_width, na.rm = TRUE), 2),
-    #           min = round(min(sil_width),2),
-    #           max = round(max(sil_width), 2),
-    #           sd = round(sd(sil_width), 2))
     
     hc_clust_member() %>%
       as.character() %>% fct_count(prop = TRUE) %>%
@@ -613,12 +595,6 @@ server <- function(input, output) {
     # row.names creates
     #kmeds()$silinfo$widths %>% as.data.frame() %>% mutate(obs = as.numeric(row.names(.)))
     kmeds()$silinfo$widths %>% as.data.frame() %>% rowid_to_column("obs")
-    # tibble(
-    #   cluster = sil_matrix[,1],
-    #   neighbor = sil_matrix[,2],
-    #   sil_width = sil_matrix[,3]
-    # ) %>%
-    #   rowid_to_column("obs")
   })
   
   clust_sil <- reactive({
@@ -653,11 +629,6 @@ server <- function(input, output) {
   
   hc_plot <- reactive({
     
-    # check_data_input()
-    # validate(
-    #   need(length(input$vars_cluster)>0, "Select at least one variable")
-    # )
-    
     hc <- hc()
     
     if(!is.null(input$id_var)){
@@ -677,7 +648,6 @@ server <- function(input, output) {
     )
     
     data() %>%
-      # dplyr::select_if(is.numeric) %>%
       dplyr::select_at(input$vars_cluster) %>%
       corrr::correlate() %>%
       corrr::as_matrix() %>%
@@ -935,11 +905,6 @@ server <- function(input, output) {
                        liveSearchStyle = "contains"
         )
       )
-      # selectInput(
-      #   "vars_cluster",
-      #   "Variables in the database",
-      #   names(data()), selected = NULL, multiple = TRUE
-      #   )
     )
   })
   
@@ -982,11 +947,6 @@ server <- function(input, output) {
         )
       )
       
-      # selectInput(
-      #   "vars_evaluate",
-      #   "Variables in the database",
-      #   names(data()), selected = NULL, multiple = TRUE
-      #   )
     )
   })
   
@@ -1047,11 +1007,6 @@ server <- function(input, output) {
     
     type <- input$box_type
     
-    # if(type == "Single") {
-    #   plot_box_single()
-    # } else{
-    #   plot_box_facet()
-    # }
     switch( type,
             "Single" =  plot_box_single(),
             "Faceted" = plot_box_facet()
@@ -1094,10 +1049,6 @@ server <- function(input, output) {
   #rownames = FALSE, screws them up
   options = list(dom = 'Bfrtip',
                  
-                 #buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
-                 
-                 #buttons = list(list(extend = 'colvis', columns = c(3:cols_to_show)))
-                 
                  # shows first 2 columns only . the rest can be selected to be shown
                  columnDefs = list(list(visible=FALSE, targets=c(4:ncol(data())))),
                  
@@ -1108,7 +1059,6 @@ server <- function(input, output) {
                  I("colvis")
                  )
                  
-                 #buttons = I('colvis') # you can selet all here
   )
   )
   
@@ -1133,42 +1083,6 @@ server <- function(input, output) {
                  )
   )
   )
-  #### Replaced with the DT download capability ###
-  # output$down_data <- downloadHandler(
-  #
-  #   filename = function() {
-  #     paste0(
-  #       "newData", input$down_type
-  #     )
-  #   },
-  #   content = function(file) {
-  #
-  #     if(input$down_type  == ".csv"){
-  #       write.csv(data_updated(), file, row.names = FALSE)
-  #     } else if (input$down_type == ".xlsx"){
-  #       writexl::write_xlsx(data_updated(), path= file)
-  #     }
-  #   }
-  # )
-  
-  #### Replaced with the DT download capability ###
-  # observe({
-  #
-  #   # Activate th downoad button
-  #   # need to find a beetter solution here, since
-  #   # it may be done multiple times
-  #   #shinyjs::enable("down_data")
-  #   data_updated()
-  #
-  #   shinyjs::enable("down_data")
-  # })
-  
-  ## Effort to automaticlly select all cluster variables
-  ## for evaluaation variables
-  # observeEvent(input$add_clust_vars{
-  #
-  #   updateSelectInput(session, "vars_evaluate")
-  
   
   # Observe Events ----------------------------------------------------------
   
@@ -1181,6 +1095,7 @@ server <- function(input, output) {
   
   callModule(plotDownloadButton, id = "plot_density", plot_name = "density", the_plot = plot_density)
   callModule(plotDownloadButton, id = "plot_box", plot_name = "plot_box", the_plot = plot_box_facet)
+  callModule(plotDownloadButton, id = "plot_tile", plot_name = "tile_plot", the_plot = tile_plot)
   
   
 }
